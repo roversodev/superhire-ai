@@ -26,11 +26,11 @@ import { useRouter } from "next/navigation";
 export default function CandidatosPage() {
   const router = useRouter();
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const {user} = useUser();
-  
+  const { user } = useUser();
+
   const jobs = useQuery(api.jobs.getJobs, user?.id ? { userId: user.id } : "skip");
   const allCandidates = useQuery(api.candidates.getAllCandidates, user?.id ? { userId: user.id } : "skip");
-  
+
   // Filtrar candidatos por vaga selecionada
   const filteredCandidates = selectedJobId
     ? allCandidates?.filter((candidate) => candidate.jobId === selectedJobId)
@@ -49,14 +49,14 @@ export default function CandidatosPage() {
   const handleViewCandidate = (candidate: any) => {
     router.push(`/candidatos/${candidate._id}`);
   };
-  
+
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Candidatos</h1>
-            
+
             {/* Seletor de Job */}
             {jobs && jobs.length > 0 && (
               <div className="w-64">
@@ -106,15 +106,15 @@ export default function CandidatosPage() {
                         <TableCell>{job?.title || "Vaga não encontrada"}</TableCell>
                         <TableCell>
                           <div className={`px-2 py-1 rounded text-white text-center ${getScoreBackgroundColor(candidate.score)}`}>
-                            {candidate.score}
+                            {candidate.score ?? '...'}
                           </div>
                         </TableCell>
                         <TableCell>
                           {new Date(candidate.createdAt).toLocaleDateString("pt-BR")}
                         </TableCell>
                         <TableCell>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             className="bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700"
                             onClick={() => handleViewCandidate(candidate)}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { UserButton } from "@/components/auth/user-button";
 import { SignedIn } from "@clerk/clerk-react";
 import { AnimatedTabs } from "./animated-tabs";
@@ -52,13 +53,13 @@ export function Navbar() {
       <div className="container mx-auto flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <span className="text-xl font-bold">SUPER</span>
-              <div className="relative">
-                <div className="absolute inset-0 rounded-full border-2 border-red-600"></div>
-                <span className="text-xl font-bold relative z-10 px-1">HIRE</span>
-              </div>
-            </div>
+            <Image 
+              src="/logo-superhire.png" 
+              alt="SuperHire Logo" 
+              width={120} 
+              height={40} 
+              className="object-contain" 
+            />
           </Link>
         </div>
 
@@ -79,11 +80,13 @@ export function Navbar() {
               <SheetContent side="right" className="bg-zinc-900 border-zinc-800 p-0 w-[80%] sm:w-[350px]">
                 <SheetHeader className="p-4 border-b border-zinc-800">
                   <SheetTitle className="text-white flex items-center gap-1">
-                    <span className="text-xl font-bold">SUPER</span>
-                    <div className="relative">
-                      <div className="absolute inset-0 rounded-full border-2 border-red-600"></div>
-                      <span className="text-xl font-bold relative z-10 px-1">HIRE</span>
-                    </div>
+                    <Image 
+                      src="/logo-superhire.png" 
+                      alt="SuperHire Logo" 
+                      width={100} 
+                      height={30} 
+                      className="object-contain" 
+                    />
                   </SheetTitle>
                 </SheetHeader>
                 <div className="py-4">

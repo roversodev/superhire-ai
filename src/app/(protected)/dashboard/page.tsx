@@ -15,14 +15,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import * as RechartsPrimitive from "recharts";
 import { useEffect, useState } from "react";
 import {
   Select,
@@ -163,8 +160,16 @@ export default function DashboardPage() {
               <h2 className="text-xl font-bold mb-4">Talentos Capturados</h2>
               <div className="h-[300px]">
                 {chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
+                  <ChartContainer
+                    className="h-full aspect-auto" 
+                    config={{
+                      value: {
+                        label: "Candidatos",
+                        color: "#ff0000"
+                      }
+                    }}
+                  >
+                    <RechartsPrimitive.AreaChart
                       data={chartData}
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                     >
@@ -174,22 +179,21 @@ export default function DashboardPage() {
                           <stop offset="95%" stopColor="#ff0000" stopOpacity={0.1} />
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="name" stroke="#666" />
-                      <YAxis stroke="#666" />
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#222', borderColor: '#444' }}
-                        labelStyle={{ color: '#fff' }}
+                      <RechartsPrimitive.XAxis dataKey="name" />
+                      <RechartsPrimitive.YAxis />
+                      <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+                      <ChartTooltip
+                        content={<ChartTooltipContent />}
                       />
-                      <Area
+                      <RechartsPrimitive.Area
                         type="monotone"
                         dataKey="value"
                         stroke="#ff0000"
                         fillOpacity={1}
                         fill="url(#colorValue)"
                       />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                    </RechartsPrimitive.AreaChart>
+                  </ChartContainer>
                 ) : (
                   <div className="flex items-center justify-center h-full text-zinc-400">
                     Nenhum dado disponível para exibir no gráfico
