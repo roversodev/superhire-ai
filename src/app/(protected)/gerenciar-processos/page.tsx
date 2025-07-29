@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Id } from "@/../convex/_generated/dataModel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export default function GerenciarJobsPage() {
     const router = useRouter();
@@ -20,10 +21,13 @@ export default function GerenciarJobsPage() {
     const updateQuestion = useMutation(api.questions.updateQuestion);
     const createQuestion = useMutation(api.questions._createQuestion);
     const deleteQuestion = useMutation(api.questions.deleteQuestion);
+    const deleteJob = useMutation(api.jobs.deleteJob);
+    const generateQuestionsWithAI = useAction(api.gemini.generateQuestionsWithAI);
 
     const [selectedJobId, setSelectedJobId] = useState<Id<"jobs"> | null>(null);
     const [editMode, setEditMode] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [generatingQuestions, setGeneratingQuestions] = useState(false);
     const [newQuestion, setNewQuestion] = useState("");
     const [formData, setFormData] = useState({
         title: "",
@@ -34,8 +38,10 @@ export default function GerenciarJobsPage() {
         idealProfile: "",
     });
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deleteJobModalOpen, setDeleteJobModalOpen] = useState(false);
     const [questionToDelete, setQuestionToDelete] = useState<{ id: Id<"questions">; index: number } | null>(null);
     const [confirmationText, setConfirmationText] = useState("");
+    const [jobConfirmationText, setJobConfirmationText] = useState("");
 
     // Buscar perguntas do job selecionado
     const questions = useQuery(
@@ -104,6 +110,65 @@ export default function GerenciarJobsPage() {
         setConfirmationText("");
     };
 
+    // Função para abrir o modal de confirmação de exclusão do job
+    const handleRemoveJob = () => {
+        if (!selectedJobId || !selectedJob) return;
+        
+        setJobConfirmationText("");
+        setDeleteJobModalOpen(true);
+    };
+
+    // Função para confirmar e executar a exclusão do job
+    const confirmJobDelete = () => {
+        if (!selectedJobId) return;
+
+        setLoading(true);
+        deleteJob({ jobId: selectedJobId, userId: user?.id || "" })
+            .then(() => {
+                toast.success("Processo excluído com sucesso!");
+                setSelectedJobId(null);
+                setDeleteJobModalOpen(false);
+                setJobConfirmationText("");
+            })
+            .catch((error) => {
+                console.error("Erro ao excluir processo:", error);
+                toast.error("Erro ao excluir processo. Tente novamente.");
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    };
+
+    // Função para gerar perguntas com IA
+    const handleGenerateQuestions = async () => {
+        if (!selectedJobId || !selectedJob) return;
+    
+        setGeneratingQuestions(true);
+        try {
+            toast.success("As perguntas estão sendo geradas em segundo plano.");
+            // Usar a action diretamente no job existente em vez de criar um novo
+            await generateQuestionsWithAI({
+                jobId: selectedJobId,
+                title: formData.title,
+                company: formData.company,
+                description: formData.description,
+                skills: formData.skills,
+                experience: formData.experience,
+                idealProfile: formData.idealProfile,
+            });
+            
+            // Definir um timeout para sair do estado de loading após 3 segundos
+            setTimeout(() => {
+                setGeneratingQuestions(false);
+                toast.success("Perguntas geradas com sucesso!");
+            }, 3000);
+        } catch (error: any) {
+            console.error("Erro ao gerar perguntas:", error);
+            toast.error("Algum erro ocorreu ao gerar as novas perguntas, por favor tente novamente mais tarde!");
+            setGeneratingQuestions(false);
+        }
+    };
+
     const handleSaveJob = async () => {
         if (!selectedJobId) return;
 
@@ -126,8 +191,10 @@ export default function GerenciarJobsPage() {
             }
 
             setEditMode(false);
+            toast.success("Alterações salvas com sucesso!");
         } catch (error) {
             console.error("Erro ao salvar job:", error);
+            toast.error("Erro ao salvar alterações. Tente novamente.");
         } finally {
             setLoading(false);
         }
@@ -196,13 +263,24 @@ export default function GerenciarJobsPage() {
                                                 {editMode ? 'Modifique as informações do processo' : selectedJob.company}
                                             </CardDescription>
                                         </div>
-                                        <Button
-                                            onClick={() => setEditMode(!editMode)}
-                                            variant="outline"
-                                            className="border-zinc-700 hover:bg-zinc-800"
-                                        >
-                                            {editMode ? 'Cancelar' : 'Editar'}
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            {!editMode && (
+                                                <Button
+                                                    onClick={handleRemoveJob}
+                                                    variant="destructive"
+                                                    className="bg-red-600 hover:bg-red-700"
+                                                >
+                                                    Excluir
+                                                </Button>
+                                            )}
+                                            <Button
+                                                onClick={() => setEditMode(!editMode)}
+                                                variant="outline"
+                                                className="border-zinc-700 hover:bg-zinc-800"
+                                            >
+                                                {editMode ? 'Cancelar' : 'Editar'}
+                                            </Button>
+                                        </div>
                                     </CardHeader>
                                     <CardContent>
                                         {editMode ? (
@@ -284,7 +362,16 @@ export default function GerenciarJobsPage() {
 
                                                 {/* Perguntas */}
                                                 <div className="mt-8">
-                                                    <h3 className="text-lg font-medium mb-4">Perguntas</h3>
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <h3 className="text-lg font-medium">Perguntas</h3>
+                                                        <Button
+                                                            onClick={handleGenerateQuestions}
+                                                            className="bg-red-600 hover:bg-red-700"
+                                                            disabled={generatingQuestions}
+                                                        >
+                                                            {generatingQuestions ? "Gerando..." : "Gerar Perguntas com IA"}
+                                                        </Button>
+                                                    </div>
 
                                                     {questions && questions.length > 0 ? (
                                                         <div className="space-y-4">
@@ -359,7 +446,16 @@ export default function GerenciarJobsPage() {
 
                                                 {/* Perguntas */}
                                                 <div className="mt-8">
-                                                    <h3 className="text-lg font-medium mb-4">Perguntas</h3>
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <h3 className="text-lg font-medium">Perguntas</h3>
+                                                        <Button
+                                                            onClick={handleGenerateQuestions}
+                                                            className="bg-red-600 hover:bg-red-700"
+                                                            disabled={generatingQuestions}
+                                                        >
+                                                            {generatingQuestions ? "Gerando..." : "Gerar Perguntas com IA"}
+                                                        </Button>
+                                                    </div>
 
                                                     {questions && questions.length > 0 ? (
                                                         <div className="space-y-4">
@@ -424,6 +520,7 @@ export default function GerenciarJobsPage() {
                     </div>
                 </div>
             </div>
+
             {/* Modal de confirmação para exclusão de pergunta */}
             <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
                 <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
@@ -459,6 +556,46 @@ export default function GerenciarJobsPage() {
                             disabled={confirmationText.toLowerCase() !== `pergunta ${questionToDelete?.index !== undefined ? questionToDelete.index + 1 : ''}`}
                         >
                             Excluir Pergunta
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de confirmação para exclusão de job */}
+            <Dialog open={deleteJobModalOpen} onOpenChange={setDeleteJobModalOpen}>
+                <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+                    <DialogHeader>
+                        <DialogTitle>Confirmar Exclusão do Processo</DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            Esta ação é irreversível. O processo seletivo e todas as suas perguntas serão permanentemente removidos.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <p className="mb-4">Para confirmar a exclusão, digite o nome da empresa abaixo:</p>
+
+                        <Input
+                            value={jobConfirmationText}
+                            onChange={(e) => setJobConfirmationText(e.target.value)}
+                            placeholder={selectedJob?.company}
+                            className="bg-zinc-800 border-zinc-700"
+                        />
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeleteJobModalOpen(false)}
+                            className="border-zinc-700 hover:bg-zinc-800"
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={confirmJobDelete}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={jobConfirmationText.toLowerCase() !== (selectedJob?.company || '').toLowerCase()}
+                        >
+                            {loading ? "Excluindo..." : "Excluir Processo"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

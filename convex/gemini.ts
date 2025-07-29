@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { ConvexError } from "convex/values";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -97,11 +97,23 @@ export const generateQuestionsWithAI = action({
       }
     } catch (error) {
       console.error("Erro ao gerar perguntas com IA:", error);
+      
+      // Registrar o erro no job
+      let errorMessage = "Falha ao gerar perguntas com IA. Por favor, tente novamente.";
+      if (error instanceof Error && error.message.includes("overloaded")) {
+        errorMessage = "O serviço de IA está sobrecarregado no momento. Por favor, tente novamente mais tarde na página de gerenciar processos.";
+      }
+      
+      await ctx.runMutation(api.jobs.recordQuestionGenerationError, {
+        jobId: args.jobId,
+        errorMessage,
+      });
+      
       // Em caso de erro, lançar exceção
       if (error instanceof ConvexError) {
         throw error; // Repassa o erro específico que já foi criado
       }
-      throw new ConvexError("Falha ao gerar perguntas com IA. Por favor, tente novamente.");
+      throw new ConvexError(errorMessage);
     }
   },
 });

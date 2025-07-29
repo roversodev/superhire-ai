@@ -121,7 +121,7 @@ export default function DashboardPage() {
         name: candidate.name,
         position: (jobTitles as Record<GenericId<"jobs">, string>)[candidate.jobId] || "Cargo não especificado",
         date: new Date(candidate.createdAt).toLocaleString('pt-BR'),
-        score: candidate.score || "N/A",
+        score: candidate.score,
       }));
   };
 
@@ -280,7 +280,7 @@ export default function DashboardPage() {
                       <TableCell>{activity.date}</TableCell>
                       <TableCell>
                         <span className={`bg-red-600 text-white px-2 py-1 rounded ${(Number(activity.score) || 0) >= 90 ? 'bg-red-600' : (Number(activity.score) || 0) >= 80 ? 'bg-red-700' : (Number(activity.score) || 0) >= 70 ? 'bg-red-800' : 'bg-red-900'}`}>
-                          {activity.score ?? '-'}
+                          {activity.score ?? '...'}
                         </span>
                       </TableCell>
                     </TableRow>

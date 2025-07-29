@@ -18,6 +18,7 @@ export default defineSchema({
     idealProfile: v.string(),
     createdBy: v.string(),
     createdAt: v.number(),
+    generationError: v.optional(v.string()),
   }).index("by_created_by", ["createdBy"]),
   
   candidates: defineTable({

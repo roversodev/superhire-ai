@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Id } from "@/../convex/_generated/dataModel";
 import Lottie from "lottie-react";
 import loadingAnimation from "@/lib/loading.json";
+import { toast } from "sonner";
 
 export default function CriarProcessoPage() {
   const router = useRouter();
@@ -34,21 +35,99 @@ export default function CriarProcessoPage() {
     experience: "",
     idealProfile: "",
   });
+  const [formErrors, setFormErrors] = useState({
+    step1: false,
+    step2: false,
+    step3: false
+  });
+
+  // Referência para o timeout
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Estado para controlar o índice do texto de loading atual
+  const [loadingTextIndex, setLoadingTextIndex] = useState(0);
+
+  // Textos de loading
+  const loadingStates = [
+    { text: "Analisando informações da vaga..." },
+    { text: "Identificando habilidades técnicas necessárias..." },
+    { text: "Criando perguntas específicas para o perfil..." },
+    { text: "Refinando perguntas para avaliar capacidade cognitiva..." },
+    { text: "Finalizando geração de perguntas..." },
+  ];
 
   const getQuestions = useQuery(
     api.questions.getQuestionsByJobId,
     jobId ? { jobId } : "skip"
   );
 
+  // Adicionar query para verificar o status da geração de perguntas
+  const generationStatus = useQuery(
+    api.jobs.checkQuestionGenerationStatus,
+    jobId ? { jobId } : "skip"
+  );
 
+  // Efeito para alternar entre os textos de loading
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (generatingQuestions) {
+      interval = setInterval(() => {
+        setLoadingTextIndex((prevIndex) =>
+          prevIndex === loadingStates.length - 1 ? 0 : prevIndex + 1
+        );
+      }, 3000); // Alterna a cada 3 segundos
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [generatingQuestions]);
+
+  // Efeito para monitorar as perguntas e o status de geração
   useEffect(() => {
     if (getQuestions && jobId) {
       if (getQuestions.length > 0) {
         setQuestions(getQuestions);
         setGeneratingQuestions(false);
+
+        // Limpar o timeout se as perguntas forem carregadas com sucesso
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+
+        // Notificar o usuário que as perguntas foram geradas
+        toast.success("Perguntas geradas com sucesso!");
       }
     }
-  }, [getQuestions, jobId]);
+
+    // Verificar o status de geração para detectar erros
+    if (generationStatus && jobId && generatingQuestions) {
+      if (generationStatus.status === "error") {
+        // Se houver um erro, mostrar mensagem e parar o loading
+        setGeneratingQuestions(false);
+        
+        // Limpar o timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        
+        // Mostrar mensagem de erro específica ou genérica
+        toast.error(generationStatus.message || "Erro ao gerar perguntas. Tente novamente mais tarde.");
+      }
+    }
+  }, [getQuestions, generationStatus, jobId, generatingQuestions]);
+
+  // Limpar todos os timeouts quando o componente for desmontado
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -76,6 +155,8 @@ export default function CriarProcessoPage() {
           createdAt: Date.now(),
         }]);
         setNewQuestion("");
+      }).catch((error) => {
+        toast.error("Erro ao adicionar pergunta: " + (error.message || "Tente novamente"));
       });
     }
   };
@@ -89,19 +170,15 @@ export default function CriarProcessoPage() {
           question: q.question,
         });
       }
-      
+
       router.push(`/link-gerado?jobId=${jobId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar perguntas:", error);
+      toast.error("Erro ao salvar perguntas: " + (error.message || "Tente novamente"));
+    } finally {
       setLoading(false);
     }
   };
-
-  const [formErrors, setFormErrors] = useState({
-    step1: false,
-    step2: false,
-    step3: false
-  });
 
   const nextStep = () => {
     if (step === 1) {
@@ -115,7 +192,7 @@ export default function CriarProcessoPage() {
         return;
       }
     }
-    
+
     setFormErrors(prev => ({ ...prev, [`step${step}`]: false }));
     setStep((prev) => prev + 1);
   };
@@ -126,26 +203,46 @@ export default function CriarProcessoPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.idealProfile.trim()) {
       setFormErrors(prev => ({ ...prev, step3: true }));
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const newJobId = await createJob({
         ...formData,
         createdBy: user?.id || "",
       });
-      
+
       setJobId(newJobId);
       setGeneratingQuestions(true);
+
+      // Notificar o usuário que o processo foi iniciado
+      toast.success("Processo criado com sucesso! As perguntas estão sendo geradas em segundo plano.");
+
+      // Definir um timeout para sair do estado de loading caso demore muito
+      timeoutRef.current = setTimeout(() => {
+        if (generatingQuestions) {
+          setGeneratingQuestions(false);
+          toast.error("Tempo esgotado ao gerar perguntas. Você pode adicionar perguntas manualmente.");
+        }
+      }, 60000); // 60 segundos
+
       nextStep();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao criar processo:", error);
       setGeneratingQuestions(false);
+      // Garantir que a mensagem de erro seja exibida
+      toast.error("Erro ao criar processo: " + (error.message || error.toString() || "Tente novamente"));
+      
+      // Limpar qualquer timeout existente
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     } finally {
       setLoading(false);
     }
@@ -153,20 +250,44 @@ export default function CriarProcessoPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Loader */}
+      {/* Loader com textos */}
       {generatingQuestions && (
-        <div className="w-full h-full fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-2xl">
+        <div className="w-full h-full fixed inset-0 z-[100] flex flex-col items-center justify-center backdrop-blur-2xl">
           <div className="h-96 w-96 relative">
-            <Lottie 
-              animationData={loadingAnimation} 
-              loop={true} 
-              autoplay={true} 
+            <Lottie
+              animationData={loadingAnimation}
+              loop={true}
+              autoplay={true}
             />
           </div>
+
+          <div className="text-center mt-4 max-w-md px-4">
+            <h3 className="text-xl font-medium mb-2">{loadingStates[loadingTextIndex].text}</h3>
+            <p className="text-zinc-400 mb-6">
+              Estamos gerando perguntas personalizadas para sua vaga. Este processo está acontecendo em nossos servidores.
+            </p>
+            <div className="bg-zinc-800/50 p-4 rounded-lg border border-zinc-700">
+              <p className="text-sm">
+                Você pode sair desta página e continuar navegando. O processo continuará em segundo plano e você será notificado quando as perguntas estiverem prontas.
+              </p>
+              <div className="mt-4 flex justify-center">
+                <Button
+                  onClick={() => {
+                    router.push('/dashboard');
+                  }}
+                  variant="outline"
+                  className="border-zinc-700 hover:bg-zinc-800 z-50"
+                >
+                  Continuar navegando
+                </Button>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-gradient-to-t inset-x-0 z-20 bottom-0 bg-white dark:bg-black h-full absolute [mask-image:radial-gradient(900px_at_center,transparent_30%,white)]" />
         </div>
       )}
-      
+
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="mb-8">
@@ -179,7 +300,7 @@ export default function CriarProcessoPage() {
               <div className="flex justify-between mb-8">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="flex flex-col items-center">
-                    <div 
+                    <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center ${step === i ? 'bg-red-600' : step > i ? 'bg-green-600' : 'bg-zinc-700'}`}
                     >
                       {step > i ? '✓' : i}
@@ -208,7 +329,7 @@ export default function CriarProcessoPage() {
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <label htmlFor="company" className="block text-sm font-medium mb-1">Empresa</label>
                         <Input
@@ -221,7 +342,7 @@ export default function CriarProcessoPage() {
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <label htmlFor="description" className="block text-sm font-medium mb-1">Descrição da Vaga</label>
                         <Textarea
@@ -251,7 +372,7 @@ export default function CriarProcessoPage() {
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <label htmlFor="experience" className="block text-sm font-medium mb-1">Experiência Necessária</label>
                         <Textarea
@@ -281,11 +402,11 @@ export default function CriarProcessoPage() {
                           required
                         />
                       </div>
-                      
+
                       <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700 mt-6">
                         <h3 className="text-sm font-medium mb-2">Como funciona?</h3>
                         <p className="text-xs text-zinc-400">
-                          Após criar o processo, nossa IA irá gerar perguntas específicas para avaliar os candidatos com base nas informações fornecidas. 
+                          Após criar o processo, nossa IA irá gerar perguntas específicas para avaliar os candidatos com base nas informações fornecidas.
                           Você poderá revisar e personalizar essas perguntas antes de compartilhar o link com os candidatos.
                         </p>
                       </div>
@@ -294,10 +415,10 @@ export default function CriarProcessoPage() {
 
                   <div className="flex justify-between mt-8">
                     {step > 1 ? (
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         onClick={prevStep}
-                        variant="outline" 
+                        variant="outline"
                         className="border-zinc-700 hover:bg-zinc-800"
                       >
                         Voltar
@@ -305,18 +426,18 @@ export default function CriarProcessoPage() {
                     ) : (
                       <div></div>
                     )}
-                    
+
                     {step < 3 ? (
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         onClick={nextStep}
                         className="bg-red-600 hover:bg-red-700 text-white"
                       >
                         Próximo
                       </Button>
                     ) : (
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="bg-red-600 hover:bg-red-700 text-white"
                         disabled={loading}
                       >
@@ -331,7 +452,7 @@ export default function CriarProcessoPage() {
                   <p className="text-sm text-zinc-400 mb-4">
                     Revise as perguntas geradas pela IA e faça as modificações necessárias. Você também pode adicionar novas perguntas personalizadas.
                   </p>
-                  
+
                   {/* Mostrar mensagem de carregamento enquanto as perguntas estão sendo geradas */}
                   {generatingQuestions || questions.length === 0 ? (
                     <div className="bg-zinc-800 p-4 rounded-lg text-center py-8">
@@ -354,7 +475,7 @@ export default function CriarProcessoPage() {
                       ))}
                     </div>
                   )}
-                  
+
                   {/* Só mostrar o formulário de adição de perguntas e botões quando as perguntas já foram carregadas */}
                   {!generatingQuestions && questions.length > 0 && (
                     <>
@@ -366,7 +487,7 @@ export default function CriarProcessoPage() {
                           placeholder="Digite uma nova pergunta personalizada..."
                           className="bg-zinc-700 border-zinc-600 min-h-[100px] mb-3"
                         />
-                        <Button 
+                        <Button
                           onClick={handleAddQuestion}
                           className="w-full bg-zinc-700 hover:bg-zinc-600"
                           disabled={!newQuestion.trim()}
@@ -376,15 +497,15 @@ export default function CriarProcessoPage() {
                       </div>
 
                       <div className="flex justify-between mt-8">
-                        <Button 
+                        <Button
                           onClick={prevStep}
-                          variant="outline" 
+                          variant="outline"
                           className="border-zinc-700 hover:bg-zinc-800"
                         >
                           Voltar
                         </Button>
-                        
-                        <Button 
+
+                        <Button
                           onClick={saveQuestions}
                           className="bg-red-600 hover:bg-red-700 text-white"
                           disabled={loading || questions.length === 0}
