@@ -23,6 +23,16 @@ export const metadata: Metadata = {
   authors: [{ name: "SuperHire" }],
   creator: "SuperHire",
   publisher: "SuperHire",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
+   appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Ingressify"
+  },
   robots: "index, follow",
   alternates: {
     canonical: "https://superhire-ai.vercel.app",
