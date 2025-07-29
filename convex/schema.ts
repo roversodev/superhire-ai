@@ -47,11 +47,10 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_job_id", ["jobId"]),
   
-  // Nova tabela para mensagens de chat
   chatMessages: defineTable({
     jobId: v.id("jobs"),
     userId: v.string(),
-    role: v.string(), // "user" ou "assistant"
+    role: v.string(),
     content: v.string(),
     createdAt: v.number(),
   })

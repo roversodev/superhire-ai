@@ -50,7 +50,7 @@ export const _createQuestion = mutation({
   },
 });
 
-// Versão interna da mutation (renomeada para evitar conflito de nomes)
+// Versão interna da mutation
 export const createQuestion = internalMutation({
   args: {
     jobId: v.id("jobs"),

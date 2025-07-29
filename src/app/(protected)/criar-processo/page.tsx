@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Id } from "@/../convex/_generated/dataModel";
-import { MultiStepLoader } from "@/components/ui/multi-step-loader";
+import Lottie from "lottie-react";
+import loadingAnimation from "@/lib/loading.json";
 
 export default function CriarProcessoPage() {
   const router = useRouter();
@@ -34,24 +35,14 @@ export default function CriarProcessoPage() {
     idealProfile: "",
   });
 
-  // Estados para o multi-step loader
-  const loadingStates = [
-    { text: "Analisando informações da vaga..." },
-    { text: "Identificando habilidades técnicas necessárias..." },
-    { text: "Criando perguntas específicas para o perfil..." },
-    { text: "Refinando perguntas para avaliar capacidade cognitiva..." },
-    { text: "Finalizando geração de perguntas..." },
-  ];
-
   const getQuestions = useQuery(
     api.questions.getQuestionsByJobId,
     jobId ? { jobId } : "skip"
   );
 
-  // Carregar perguntas quando o jobId for definido
+
   useEffect(() => {
     if (getQuestions && jobId) {
-      // Verificar se há perguntas antes de desativar o loader
       if (getQuestions.length > 0) {
         setQuestions(getQuestions);
         setGeneratingQuestions(false);
@@ -92,7 +83,6 @@ export default function CriarProcessoPage() {
   const saveQuestions = async () => {
     setLoading(true);
     try {
-      // Atualizar todas as perguntas modificadas
       for (const q of questions) {
         await updateQuestion({
           questionId: q._id,
@@ -100,7 +90,6 @@ export default function CriarProcessoPage() {
         });
       }
       
-      // Redirecionar para a página de link gerado
       router.push(`/link-gerado?jobId=${jobId}`);
     } catch (error) {
       console.error("Erro ao salvar perguntas:", error);
@@ -115,7 +104,6 @@ export default function CriarProcessoPage() {
   });
 
   const nextStep = () => {
-    // Validar campos do passo atual
     if (step === 1) {
       if (!formData.title.trim() || !formData.company.trim() || !formData.description.trim()) {
         setFormErrors(prev => ({ ...prev, step1: true }));
@@ -128,7 +116,6 @@ export default function CriarProcessoPage() {
       }
     }
     
-    // Se chegou aqui, não tem erros
     setFormErrors(prev => ({ ...prev, [`step${step}`]: false }));
     setStep((prev) => prev + 1);
   };
@@ -154,7 +141,7 @@ export default function CriarProcessoPage() {
       });
       
       setJobId(newJobId);
-      setGeneratingQuestions(true); // Ativar o loader enquanto as perguntas são geradas
+      setGeneratingQuestions(true);
       nextStep();
     } catch (error) {
       console.error("Erro ao criar processo:", error);
@@ -166,13 +153,19 @@ export default function CriarProcessoPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Multi-step loader - Aumentei a duração para 5000ms para dar mais tempo entre as transições */}
-      <MultiStepLoader 
-        loadingStates={loadingStates} 
-        loading={generatingQuestions} 
-        duration={5000}
-        loop={true}
-      />
+      {/* Loader */}
+      {generatingQuestions && (
+        <div className="w-full h-full fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-2xl">
+          <div className="h-96 w-96 relative">
+            <Lottie 
+              animationData={loadingAnimation} 
+              loop={true} 
+              autoplay={true} 
+            />
+          </div>
+          <div className="bg-gradient-to-t inset-x-0 z-20 bottom-0 bg-white dark:bg-black h-full absolute [mask-image:radial-gradient(900px_at_center,transparent_30%,white)]" />
+        </div>
+      )}
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
@@ -333,7 +326,6 @@ export default function CriarProcessoPage() {
                   </div>
                 </form>
               ) : (
-                // Passo 4: Visualização e edição de perguntas
                 <div className="space-y-6">
                   <h3 className="text-lg font-medium mb-2">Perguntas Geradas pela IA</h3>
                   <p className="text-sm text-zinc-400 mb-4">

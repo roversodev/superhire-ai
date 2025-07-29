@@ -24,26 +24,22 @@ export const createCandidate = mutation({
 export const getAllCandidates = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    // First, get all jobs created by the user
     const userJobs = await ctx.db
       .query("jobs")
       .withIndex("by_created_by", (q) => q.eq("createdBy", args.userId))
       .collect();
 
-    // If user has no jobs, return empty array
     if (userJobs.length === 0) {
       return [];
     }
 
-    // Get all candidates for user's jobs using a more efficient query
     const candidates = await ctx.db
       .query("candidates")
       .withIndex("by_job_id", (q) =>
-        q.eq("jobId", userJobs[0]._id) // Start with first job
+        q.eq("jobId", userJobs[0]._id)
       )
       .collect();
 
-    // If there are more jobs, get their candidates too
     if (userJobs.length > 1) {
       const otherCandidates = await Promise.all(
         userJobs.slice(1).map((job) =>
@@ -54,7 +50,6 @@ export const getAllCandidates = query({
         )
       );
       
-      // Combine all candidates
       return [...candidates, ...otherCandidates.flat()];
     }
 
@@ -74,7 +69,6 @@ export const getCandidates = query({
   },
 });
 
-// Internal query version - add this
 export const _getCandidates = internalQuery({
   args: { jobId: v.id("jobs") },
   handler: async (ctx, args) => {
@@ -104,12 +98,10 @@ export const submitAnswer = mutation({
 export const analyzeCandidate = mutation({
   args: { candidateId: v.id("candidates") },
   handler: async (ctx, args) => {
-    // Agendar a análise com IA usando uma action
     await ctx.scheduler.runAfter(0, api.gemini.analyzeWithAI, {
       candidateId: args.candidateId,
     });
     
-    // Retornar um valor temporário enquanto a análise é processada
     return 0;
   },
 });

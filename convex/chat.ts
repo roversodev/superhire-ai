@@ -228,7 +228,7 @@ export const generateChatResponse = action({
       console.error("Erro ao gerar resposta com IA:", error);
       // Em caso de erro, lançar exceção
       if (error instanceof ConvexError) {
-        throw error; // Repassa o erro específico que já foi criado
+        throw error;
       }
       throw new ConvexError("Falha ao gerar resposta com IA. Por favor, tente novamente.");
     }

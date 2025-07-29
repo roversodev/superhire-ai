@@ -45,7 +45,7 @@ export default function CandidatosPage() {
     return "bg-red-900";
   };
 
-  // Função para visualizar candidato (redirecionando para página de detalhes)
+
   const handleViewCandidate = (candidate: any) => {
     router.push(`/candidatos/${candidate._id}`);
   };

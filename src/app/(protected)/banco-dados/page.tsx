@@ -84,7 +84,7 @@ export default function BancoDadosPage() {
   // Seleção de job via botão de projeto
   const handleSelectJob = (jobId: string) => {
     setSelectedJobId(jobId);
-    setIsJobMenuOpen(false); // Fechar o menu após selecionar
+    setIsJobMenuOpen(false);
   };
 
   // Fechar o menu quando clicar fora dele
@@ -466,7 +466,6 @@ export default function BancoDadosPage() {
                   <div className="flex items-center gap-2">
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Botão de seleção de projeto (job) - Versão minimalista */}
                     <div className="relative" ref={jobMenuRef}>
                       <button
                         type="button"

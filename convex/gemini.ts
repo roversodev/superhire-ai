@@ -256,7 +256,7 @@ export const analyzeWithAI = action({
       console.error("Erro ao analisar candidato com IA:", error);
       // Lançar erro
       if (error instanceof ConvexError) {
-        throw error; // Repassa o erro específico que já foi criado
+        throw error;
       }
       throw new ConvexError("Falha ao analisar candidato com IA. Por favor, tente novamente.");
     }
