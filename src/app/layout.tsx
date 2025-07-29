@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
@@ -18,7 +18,45 @@ const geistSans = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "SuperHire AI",
-  description: "Sua inteligencia artificial para recrutamento",
+  description: "Sua inteligência artificial para recrutamento e seleção de talentos",
+  keywords: ["recrutamento", "seleção", "inteligência artificial", "RH", "recursos humanos", "talentos", "contratação"],
+  authors: [{ name: "SuperHire" }],
+  creator: "SuperHire",
+  publisher: "SuperHire",
+  robots: "index, follow",
+  alternates: {
+    canonical: "https://superhire-ai.vercel.app",
+  },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: "https://superhire-ai.vercel.app",
+    title: "SuperHire AI - Recrutamento Inteligente",
+    description: "Revolucione seu processo de recrutamento com inteligência artificial",
+    siteName: "SuperHire AI",
+    images: [{
+      url: "https://superhire-ai.vercel.app/mvp.jpg",
+      width: 1200,
+      height: 630,
+      alt: "SuperHire AI - Recrutamento Inteligente"
+    }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SuperHire AI - Recrutamento Inteligente",
+    description: "Revolucione seu processo de recrutamento com inteligência artificial",
+    images: ["https://superhire-ai.vercel.app/mvp.jpg"],
+    creator: "@superhire",
+  },
+  applicationName: "SuperHire AI",
+  category: "Recrutamento e Seleção",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: [{ media: "(prefers-color-scheme: dark)", color: "#000000" }],
 };
 
 export default function RootLayout({
